@@ -1,0 +1,41 @@
+dist: focal
+
+addons:
+  apt:
+    packages:
+      - curl
+      - make
+      - gzip
+      - git
+
+language: bash
+
+services:
+  - docker
+
+script:
+  - export ZULU_JDK="zulu17.28.13-ca-jdk17.0.0-linux_x64"
+  - export APACHE_MAVEN_MAJOR="3"
+  - export APACHE_MAVEN_MINOR="8"
+  - export APACHE_MAVEN_PATCH="2"
+  - export APACHE_MAVEN_VERSION="$APACHE_MAVEN_MAJOR.$APACHE_MAVEN_MINOR.$APACHE_MAVEN_PATCH"
+  - export APACHE_MAVEN="apache-maven-$APACHE_MAVEN_VERSION"
+  - export APACHE_MAVEN_BIN="$APACHE_MAVEN-bin"
+  - WORK_DIR=$(pwd)
+  - cd /tmp
+  - curl https://cdn.azul.com/zulu/bin/$ZULU_JDK.tar.gz -o $ZULU_JDK.tar.gz
+  - gunzip $ZULU_JDK.tar.gz
+  - tar -xvf $ZULU_JDK.tar
+  - export PATH="$PATH:/tmp/$ZULU_JDK/bin"
+  - export JAVA_HOME="/tmp/$ZULU_JDK"
+  - curl https://dlcdn.apache.org/maven/maven-$APACHE_MAVEN_MAJOR/$APACHE_MAVEN_VERSION/binaries/$APACHE_MAVEN_BIN.tar.gz -o $APACHE_MAVEN_BIN.tar.gz
+  - gunzip $APACHE_MAVEN_BIN.tar.gz
+  - tar -xvf $APACHE_MAVEN_BIN.tar
+  - export PATH="$PATH:/tmp/$APACHE_MAVEN/bin"
+  - mvn --version
+  - cd "$WORK_DIR"
+  - make
+
+cache:
+  directories:
+    - $HOME/.m2
