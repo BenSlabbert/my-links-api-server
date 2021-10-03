@@ -19,7 +19,6 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpChunkedInput;
 import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.stream.ChunkedStream;
-import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URI;
@@ -38,7 +37,10 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
   private final Map<String, RequestHandler> handlers;
 
   public HttpBusinessHandler(JedisPool jedisPool) {
-    this.handlers = Map.of("/uris", new UriHandler(jedisPool));
+    this.handlers =
+        Map.of(
+            "/uris", new UriHandler(jedisPool),
+            "/auth", new AuthHandler(jedisPool));
   }
 
   @Override
