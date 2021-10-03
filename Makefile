@@ -7,7 +7,7 @@ install: fmt
 	@ docker build . -t my-links/api-server
 
 run: install
-	@ docker container run --rm -it my-links/api-server:latest
+	@ docker container run --rm -it -p 8080:8080 my-links/api-server:latest
 
 test: fmt
 	@ mvn test

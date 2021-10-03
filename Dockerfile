@@ -48,7 +48,7 @@ COPY "target/lib" "/lib"
 COPY --from=packager "$JAVA_MINIMAL" "$JAVA_MINIMAL"
 COPY "target/api-server.jar" "/app.jar"
 
-EXPOSE 8443
+EXPOSE 8080
 ENV JAVA_OPTS="-XX:+UseZGC -Xlog:gc -Xmx64m -Xms64m"
-CMD [ "-jar", "/app.jar", "$JAVA_OPTS" ]
-ENTRYPOINT [ "java", "-cp", "/lib" ]
+CMD [ "-jar", "/app.jar", "-cp", "/lib", "$JAVA_OPTS" ]
+ENTRYPOINT [ "java" ]
