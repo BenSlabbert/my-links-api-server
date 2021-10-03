@@ -36,11 +36,9 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
   private static final Logger log = LoggerFactory.getLogger(HttpBusinessHandler.class);
 
   private final Map<String, RequestHandler> handlers;
-  private final DefaultEventExecutorGroup executor;
 
-  public HttpBusinessHandler(DefaultEventExecutorGroup executor, JedisPool jedisPool) {
+  public HttpBusinessHandler(JedisPool jedisPool) {
     this.handlers = Map.of("/uris", new UriHandler(jedisPool));
-    this.executor = executor;
   }
 
   @Override
@@ -59,9 +57,9 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
     handleRequest(req)
         .exceptionallyAsync(
             throwable -> {
-              if (throwable instanceof CompletionException e
-                  && e.getCause() instanceof UnauthorizedException ee) {
-                log.error("unauthorized exception", ee);
+              if (throwable instanceof CompletionException ce
+                  && ce.getCause() instanceof UnauthorizedException e) {
+                log.error("unauthorized exception", e);
                 return new Response(UNAUTHORIZED, InputStream.nullInputStream());
               }
 

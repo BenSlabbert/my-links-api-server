@@ -34,7 +34,6 @@ public class Main {
 
     var bossGroup = new EpollEventLoopGroup(1, new MyThreadFactory("boss"));
     var childGroup = new EpollEventLoopGroup(2, new MyThreadFactory("child"));
-    var executor = new DefaultEventExecutorGroup(5, new MyThreadFactory("executor"));
 
     try (var jedisPool = new JedisPool(poolConfig, "localhost")) {
       ServerBootstrap b = new ServerBootstrap();
@@ -51,7 +50,7 @@ public class Main {
                   p.addLast("aggregator", new HttpObjectAggregator(Short.MAX_VALUE));
                   p.addLast("compressor", new HttpContentCompressor());
                   p.addLast("chunkedWriteHandler", new ChunkedWriteHandler());
-                  p.addLast("businessLogicHandler", new HttpBusinessHandler(executor, jedisPool));
+                  p.addLast("businessLogicHandler", new HttpBusinessHandler(jedisPool));
                 }
               });
 
