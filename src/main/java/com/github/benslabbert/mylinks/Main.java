@@ -15,20 +15,28 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.handler.timeout.IdleStateHandler;
+import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 
 public class Main {
 
   private static final Logger log = LoggerFactory.getLogger(Main.class);
 
   public static void main(String[] args) throws InterruptedException {
+    var poolConfig = new JedisPoolConfig();
+    poolConfig.setMaxTotal(4);
+    poolConfig.setMaxIdle(4);
+
     var bossGroup = new EpollEventLoopGroup(1, new MyThreadFactory("boss"));
     var childGroup = new EpollEventLoopGroup(2, new MyThreadFactory("child"));
+    var executor = new DefaultEventExecutorGroup(5, new MyThreadFactory("executor"));
 
-    try {
+    try (var jedisPool = new JedisPool(poolConfig, "localhost")) {
       ServerBootstrap b = new ServerBootstrap();
       b.group(bossGroup, childGroup)
           .channel(EpollServerSocketChannel.class)
@@ -40,12 +48,10 @@ public class Main {
                   var p = ch.pipeline();
                   p.addLast("ideStateHandler", new IdleStateHandler(10, 10, 10));
                   p.addLast("codec", new HttpServerCodec());
-                  // Deals with fragmentation in http traffic:
                   p.addLast("aggregator", new HttpObjectAggregator(Short.MAX_VALUE));
-                  // Deals with optional compression of responses:
                   p.addLast("compressor", new HttpContentCompressor());
                   p.addLast("chunkedWriteHandler", new ChunkedWriteHandler());
-                  p.addLast("businessLogicHandler", new HttpBusinessHandler());
+                  p.addLast("businessLogicHandler", new HttpBusinessHandler(executor, jedisPool));
                 }
               });
 

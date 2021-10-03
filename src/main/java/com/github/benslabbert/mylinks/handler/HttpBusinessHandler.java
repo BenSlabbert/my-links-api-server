@@ -5,36 +5,42 @@ import static io.netty.handler.codec.http.HttpHeaderNames.TRANSFER_ENCODING;
 import static io.netty.handler.codec.http.HttpHeaderValues.CHUNKED;
 import static io.netty.handler.codec.http.HttpHeaderValues.CLOSE;
 import static io.netty.handler.codec.http.HttpHeaderValues.KEEP_ALIVE;
+import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
+import static java.nio.charset.StandardCharsets.*;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
+import com.github.benslabbert.mylinks.exception.UnauthorizedException;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpChunkedInput;
-import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.stream.ChunkedStream;
+import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.JedisPool;
 
 public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
   private static final Logger log = LoggerFactory.getLogger(HttpBusinessHandler.class);
 
   private final Map<String, RequestHandler> handlers;
+  private final DefaultEventExecutorGroup executor;
 
-  public HttpBusinessHandler() {
-    handlers = Map.of("/uris", new UriHandler());
+  public HttpBusinessHandler(DefaultEventExecutorGroup executor, JedisPool jedisPool) {
+    this.handlers = Map.of("/uris", new UriHandler(jedisPool));
+    this.executor = executor;
   }
 
   @Override
@@ -51,7 +57,18 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
     }
 
     handleRequest(req)
-        .thenApply(
+        .exceptionallyAsync(
+            throwable -> {
+              if (throwable instanceof CompletionException e
+                  && e.getCause() instanceof UnauthorizedException ee) {
+                log.error("unauthorized exception", ee);
+                return new Response(UNAUTHORIZED, InputStream.nullInputStream());
+              }
+
+              log.error("exception handling request", throwable);
+              return new Response(INTERNAL_SERVER_ERROR, InputStream.nullInputStream());
+            })
+        .thenComposeAsync(
             resp -> {
               log.info("handling resp");
               var keepAlive = HttpUtil.isKeepAlive(req);
@@ -69,12 +86,12 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
 
               ctx.write(response);
 
-              var f = ctx.write(new HttpChunkedInput(new ChunkedStream(resp.body())));
+              var f = ctx.writeAndFlush(new HttpChunkedInput(new ChunkedStream(resp.body())));
               if (!keepAlive) {
                 f.addListener(ChannelFutureListener.CLOSE);
               }
 
-              return completedFuture(null);
+              return null;
             });
   }
 
@@ -89,16 +106,18 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
     var path = uri.getPath();
 
     if (!handlers.containsKey(path)) {
-      InputStream body = new ByteArrayInputStream("not found".getBytes(StandardCharsets.UTF_8));
-      return completedFuture(new Response(HttpResponseStatus.NOT_FOUND, body));
+      InputStream body = new ByteArrayInputStream("not found".getBytes(UTF_8));
+      return completedFuture(new Response(NOT_FOUND, body));
     }
 
-    if (StringUtils.isEmpty(req.headers().get(CustomHeaders.REQ_ID))) {
-      InputStream body =
-          new ByteArrayInputStream("Required header not provided".getBytes(StandardCharsets.UTF_8));
-      return completedFuture(new Response(HttpResponseStatus.BAD_REQUEST, body));
+    for (var customHeader : CustomHeaders.values()) {
+      if (StringUtils.isEmpty(req.headers().get(customHeader.val()))) {
+        var str = "Required header: " + customHeader.val() + " not provided";
+        var body = new ByteArrayInputStream(str.getBytes(UTF_8));
+        return completedFuture(new Response(BAD_REQUEST, body));
+      }
     }
 
-    return handlers.get(path).handle(req);
+    return handlers.get(path).handle(CompletableFuture.supplyAsync(() -> req));
   }
 }

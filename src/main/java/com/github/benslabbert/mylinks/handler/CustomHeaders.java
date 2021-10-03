@@ -1,8 +1,17 @@
 package com.github.benslabbert.mylinks.handler;
 
-public class CustomHeaders {
+public enum CustomHeaders {
+  REQ_ID("X-ReqId"),
+  USER_ID("X-UserId"),
+  TOKEN("X-Token");
 
-  private CustomHeaders() {}
+  private final String val;
 
-  public static final String REQ_ID = "X-ReqId";
+  CustomHeaders(String val) {
+    this.val = val;
+  }
+
+  public String val() {
+    return val;
+  }
 }

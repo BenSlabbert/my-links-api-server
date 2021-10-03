@@ -5,5 +5,5 @@ import java.util.concurrent.CompletableFuture;
 
 public interface RequestHandler {
 
-  CompletableFuture<Response> handle(FullHttpRequest req);
+  CompletableFuture<Response> handle(CompletableFuture<FullHttpRequest> future);
 }
