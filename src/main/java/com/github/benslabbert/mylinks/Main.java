@@ -8,8 +8,9 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.http.HttpContentCompressor;
+import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
-import io.netty.handler.codec.http.HttpServerExpectContinueHandler;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.stream.ChunkedWriteHandler;
@@ -38,9 +39,11 @@ public class Main {
                 public void initChannel(SocketChannel ch) {
                   var p = ch.pipeline();
                   p.addLast("ideStateHandler", new IdleStateHandler(10, 10, 10));
-                  p.addLast("serverCodec", new HttpServerCodec());
-                  p.addLast("expectContinueHandler", new HttpServerExpectContinueHandler());
-                  // todo confirm
+                  p.addLast("codec", new HttpServerCodec());
+                  // Deals with fragmentation in http traffic:
+                  p.addLast("aggregator", new HttpObjectAggregator(Short.MAX_VALUE));
+                  // Deals with optional compression of responses:
+                  p.addLast("compressor", new HttpContentCompressor());
                   p.addLast("chunkedWriteHandler", new ChunkedWriteHandler());
                   p.addLast("businessLogicHandler", new HttpBusinessHandler());
                 }
