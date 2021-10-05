@@ -1,24 +1,17 @@
 package com.github.benslabbert.mylinks.handler;
 
+import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+
 import com.github.benslabbert.mylinks.exception.UnauthorizedException;
 import com.github.benslabbert.mylinks.util.BasicAuthUtil;
-import com.sun.net.httpserver.BasicAuthenticator;
 import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisPool;
-
-import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 
 public class LoginHandler implements RequestHandler {
 
@@ -36,9 +29,9 @@ public class LoginHandler implements RequestHandler {
   public Response handle(FullHttpRequest request) {
     log.info("handle request");
 
-      var credentials = BasicAuthUtil.getCredentials(request);
+    var credentials = BasicAuthUtil.getCredentials(request);
 
-      try (var jedis = jedisPool.getResource()) {
+    try (var jedis = jedisPool.getResource()) {
       var s = jedis.get(credentials.username());
 
       if (StringUtils.isEmpty(s)) {

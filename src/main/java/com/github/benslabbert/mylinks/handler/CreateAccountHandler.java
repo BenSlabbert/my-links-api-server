@@ -1,20 +1,17 @@
 package com.github.benslabbert.mylinks.handler;
 
+import static io.netty.handler.codec.http.HttpResponseStatus.CREATED;
+
 import com.github.benslabbert.mylinks.exception.ConflictException;
-import com.github.benslabbert.mylinks.exception.UnauthorizedException;
 import com.github.benslabbert.mylinks.util.BasicAuthUtil;
 import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.HttpHeaderNames;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisPool;
-
-import static io.netty.handler.codec.http.HttpResponseStatus.CREATED;
 
 public class CreateAccountHandler implements RequestHandler {
 

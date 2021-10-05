@@ -68,15 +68,15 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
         .exceptionallyAsync(
             throwable -> {
               if (throwable instanceof CompletionException ce) {
-                  if(ce.getCause() instanceof UnauthorizedException e) {
-                      log.error("unauthorized exception", e);
-                      return new Response(UNAUTHORIZED, nullInputStream());
-                  }
+                if (ce.getCause() instanceof UnauthorizedException e) {
+                  log.error("unauthorized exception", e);
+                  return new Response(UNAUTHORIZED, nullInputStream());
+                }
 
-                  if(ce.getCause() instanceof ConflictException e) {
-                      log.error("conflict exception", e);
-                      return new Response(CONFLICT, nullInputStream());
-                  }
+                if (ce.getCause() instanceof ConflictException e) {
+                  log.error("conflict exception", e);
+                  return new Response(CONFLICT, nullInputStream());
+                }
               }
 
               log.error("exception handling request", throwable);
