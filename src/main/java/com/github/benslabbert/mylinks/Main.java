@@ -15,6 +15,7 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.handler.timeout.IdleStateHandler;
+import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -31,6 +32,7 @@ public class Main {
     poolConfig.setMaxTotal(4);
     poolConfig.setMaxIdle(4);
 
+    var workerGroup = new DefaultEventExecutorGroup(4, new MyThreadFactory("worker"));
     var bossGroup = new EpollEventLoopGroup(1, new MyThreadFactory("boss"));
     var childGroup = new EpollEventLoopGroup(2, new MyThreadFactory("child"));
 
@@ -48,8 +50,8 @@ public class Main {
                   p.addLast("codec", new HttpServerCodec());
                   p.addLast("aggregator", new HttpObjectAggregator(Short.MAX_VALUE));
                   p.addLast("compressor", new HttpContentCompressor());
-                  p.addLast("chunkedWriteHandler", new ChunkedWriteHandler());
-                  p.addLast("businessLogicHandler", new HttpBusinessHandler(jedisPool));
+                  p.addLast("chunkedWrite", new ChunkedWriteHandler());
+                  p.addLast("businessLogic", new HttpBusinessHandler(workerGroup, jedisPool));
                 }
               });
 
@@ -69,6 +71,7 @@ public class Main {
         log.warn("not able to complete all tasks");
       }
 
+      workerGroup.shutdownGracefully();
       childGroup.shutdownGracefully();
       bossGroup.shutdownGracefully();
     }

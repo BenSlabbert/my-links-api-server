@@ -7,9 +7,12 @@ import static io.netty.handler.codec.http.HttpHeaderValues.CLOSE;
 import static io.netty.handler.codec.http.HttpHeaderValues.KEEP_ALIVE;
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
+import static java.io.InputStream.nullInputStream;
 import static java.nio.charset.StandardCharsets.*;
 import static java.util.concurrent.CompletableFuture.completedFuture;
+import static java.util.concurrent.CompletableFuture.supplyAsync;
 
+import com.github.benslabbert.mylinks.exception.ConflictException;
 import com.github.benslabbert.mylinks.exception.UnauthorizedException;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -19,6 +22,7 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpChunkedInput;
 import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.stream.ChunkedStream;
+import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URI;
@@ -35,12 +39,16 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
   private static final Logger log = LoggerFactory.getLogger(HttpBusinessHandler.class);
 
   private final Map<String, RequestHandler> handlers;
+  private final DefaultEventExecutorGroup group;
 
-  public HttpBusinessHandler(JedisPool jedisPool) {
+  public HttpBusinessHandler(DefaultEventExecutorGroup group, JedisPool jedisPool) {
+    this.group = group;
     this.handlers =
         Map.of(
-            "/uris", new UriHandler(jedisPool),
-            "/auth", new AuthHandler(jedisPool));
+            UriHandler.PATH, new UriHandler(jedisPool),
+            CreateAccountHandler.PATH, new CreateAccountHandler(jedisPool),
+            LogoutHandler.PATH, new LogoutHandler(jedisPool),
+            LoginHandler.PATH, new LoginHandler(jedisPool));
   }
 
   @Override
@@ -59,16 +67,23 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
     handleRequest(req)
         .exceptionallyAsync(
             throwable -> {
-              if (throwable instanceof CompletionException ce
-                  && ce.getCause() instanceof UnauthorizedException e) {
-                log.error("unauthorized exception", e);
-                return new Response(UNAUTHORIZED, InputStream.nullInputStream());
+              if (throwable instanceof CompletionException ce) {
+                  if(ce.getCause() instanceof UnauthorizedException e) {
+                      log.error("unauthorized exception", e);
+                      return new Response(UNAUTHORIZED, nullInputStream());
+                  }
+
+                  if(ce.getCause() instanceof ConflictException e) {
+                      log.error("conflict exception", e);
+                      return new Response(CONFLICT, nullInputStream());
+                  }
               }
 
               log.error("exception handling request", throwable);
-              return new Response(INTERNAL_SERVER_ERROR, InputStream.nullInputStream());
-            })
-        .thenComposeAsync(
+              return new Response(INTERNAL_SERVER_ERROR, nullInputStream());
+            },
+            group)
+        .thenAcceptAsync(
             resp -> {
               log.info("handling resp");
               var keepAlive = HttpUtil.isKeepAlive(req);
@@ -90,9 +105,8 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
               if (!keepAlive) {
                 f.addListener(ChannelFutureListener.CLOSE);
               }
-
-              return null;
-            });
+            },
+            group);
   }
 
   @Override
@@ -110,14 +124,18 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
       return completedFuture(new Response(NOT_FOUND, body));
     }
 
+    if ("/auth".equals(path)) {
+      return supplyAsync(() -> handlers.get(path).handle(req), group);
+    }
+
     for (var customHeader : CustomHeaders.values()) {
-      if (StringUtils.isEmpty(req.headers().get(customHeader.val()))) {
+      if (customHeader.required() && StringUtils.isEmpty(req.headers().get(customHeader.val()))) {
         var str = "Required header: " + customHeader.val() + " not provided";
         var body = new ByteArrayInputStream(str.getBytes(UTF_8));
         return completedFuture(new Response(BAD_REQUEST, body));
       }
     }
 
-    return handlers.get(path).handle(CompletableFuture.supplyAsync(() -> req));
+    return supplyAsync(() -> handlers.get(path).handle(req), group);
   }
 }
