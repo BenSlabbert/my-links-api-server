@@ -1,6 +1,7 @@
 package com.github.benslabbert.mylinks;
 
 import com.github.benslabbert.mylinks.handler.HttpBusinessHandler;
+import com.github.benslabbert.mylinks.service.StorageService;
 import com.github.benslabbert.mylinks.thread.MyThreadFactory;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
@@ -16,12 +17,11 @@ import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
 public class Main {
 
@@ -37,6 +37,15 @@ public class Main {
     var childGroup = new EpollEventLoopGroup(2, new MyThreadFactory("child"));
 
     try (var jedisPool = new JedisPool(poolConfig, "localhost")) {
+
+      try (var jedis = jedisPool.getResource()) {
+        String pong = jedis.ping();
+        log.info("ping: {}", pong);
+      } catch (JedisConnectionException e) {
+        log.error("unable to connect to redis", e);
+        return;
+      }
+
       ServerBootstrap b = new ServerBootstrap();
       b.group(bossGroup, childGroup)
           .channel(EpollServerSocketChannel.class)
@@ -51,7 +60,10 @@ public class Main {
                   p.addLast("aggregator", new HttpObjectAggregator(Short.MAX_VALUE));
                   p.addLast("compressor", new HttpContentCompressor());
                   p.addLast("chunkedWrite", new ChunkedWriteHandler());
-                  p.addLast("businessLogic", new HttpBusinessHandler(workerGroup, jedisPool));
+                  p.addLast(
+                      workerGroup,
+                      "businessLogic",
+                      new HttpBusinessHandler(new StorageService(jedisPool)));
                 }
               });
 
@@ -64,12 +76,6 @@ public class Main {
       f.channel().closeFuture().sync();
     } finally {
       log.info("stopping thread pools");
-
-      if (ForkJoinPool.commonPool().awaitQuiescence(10L, TimeUnit.SECONDS)) {
-        log.info("ForkJoinPool.commonPool stopped all tasks");
-      } else {
-        log.warn("not able to complete all tasks");
-      }
 
       workerGroup.shutdownGracefully();
       childGroup.shutdownGracefully();

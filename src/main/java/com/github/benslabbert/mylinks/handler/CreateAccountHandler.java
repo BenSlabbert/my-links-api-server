@@ -1,9 +1,7 @@
 package com.github.benslabbert.mylinks.handler;
 
-import static io.netty.handler.codec.http.HttpResponseStatus.CREATED;
-
-import com.github.benslabbert.mylinks.exception.ConflictException;
-import com.github.benslabbert.mylinks.util.BasicAuthUtil;
+import com.github.benslabbert.mylinks.service.StorageService;
+import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.FullHttpRequest;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -11,7 +9,6 @@ import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.JedisPool;
 
 public class CreateAccountHandler implements RequestHandler {
 
@@ -19,31 +16,56 @@ public class CreateAccountHandler implements RequestHandler {
 
   private static final Logger log = LoggerFactory.getLogger(CreateAccountHandler.class);
 
-  private final JedisPool jedisPool;
+  private final StorageService storageService;
 
-  public CreateAccountHandler(JedisPool jedisPool) {
-    this.jedisPool = jedisPool;
+  public CreateAccountHandler(StorageService storageService) {
+    this.storageService = storageService;
   }
 
   @Override
   public Response handle(FullHttpRequest request) {
     log.info("handle request");
 
-    var credentials = BasicAuthUtil.getCredentials(request);
-
-    try (var jedis = jedisPool.getResource()) {
-      var s = jedis.get(credentials.username());
-
-      if (!StringUtils.isEmpty(s)) {
-        throw new ConflictException("unable to create account");
-      }
-
-      jedis.set(credentials.username(), credentials.password());
-
-      var token = UUID.randomUUID().toString();
-      jedis.set(credentials.username() + "-token", token);
-      return new Response(
-          CREATED, new ByteArrayInputStream(token.getBytes(StandardCharsets.UTF_8)));
+    if (!request.method().name().equals("POST")) {
+      return Response.methodNotAllowed();
     }
+
+    ByteBuf byteBuf = request.content().copy();
+    int readableBytes = byteBuf.readableBytes();
+    log.info("readableBytes {}", readableBytes);
+
+    var bytes = new byte[readableBytes];
+    byteBuf.readBytes(bytes);
+    boolean refContEqualsZero = byteBuf.release();
+    log.info("refContEqualsZero {}", refContEqualsZero);
+
+    var body = new String(bytes, StandardCharsets.UTF_8);
+
+    if (StringUtils.isEmpty(body)) {
+      return Response.badRequest();
+    }
+
+    log.info("body: {}", body);
+
+    var arr = body.split("&");
+    if (arr.length != 2) {
+      return Response.badRequest();
+    }
+
+    var username = arr[0].split("=")[1];
+    var password = arr[1].split("=")[1];
+
+    var s = storageService.getUser(username);
+
+    if (s.isPresent()) {
+      return Response.conflict();
+    }
+
+    storageService.setUser(username, password);
+    var token = UUID.randomUUID();
+    storageService.setToken(username, token);
+
+    return Response.created(
+        new ByteArrayInputStream(token.toString().getBytes(StandardCharsets.UTF_8)));
   }
 }
