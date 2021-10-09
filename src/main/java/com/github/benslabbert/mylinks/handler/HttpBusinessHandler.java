@@ -5,11 +5,11 @@ import static io.netty.handler.codec.http.HttpHeaderNames.TRANSFER_ENCODING;
 import static io.netty.handler.codec.http.HttpHeaderValues.CHUNKED;
 import static io.netty.handler.codec.http.HttpHeaderValues.CLOSE;
 import static io.netty.handler.codec.http.HttpHeaderValues.KEEP_ALIVE;
-import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 import static java.nio.charset.StandardCharsets.*;
 
 import com.github.benslabbert.mylinks.service.StorageService;
+import com.google.gson.Gson;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -27,17 +27,17 @@ import org.slf4j.LoggerFactory;
 
 public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
-  private static final Logger log = LoggerFactory.getLogger(HttpBusinessHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(HttpBusinessHandler.class);
 
   private final Map<String, RequestHandler> handlers;
 
-  public HttpBusinessHandler(StorageService storageService) {
+  public HttpBusinessHandler(StorageService storageService, Gson gson) {
     this.handlers =
         Map.of(
             UriHandler.PATH, new UriHandler(storageService),
             CreateAccountHandler.PATH, new CreateAccountHandler(storageService),
             LogoutHandler.PATH, new LogoutHandler(storageService),
-            LoginHandler.PATH, new LoginHandler(storageService));
+            LoginHandler.PATH, new LoginHandler(storageService, gson));
   }
 
   @Override
@@ -48,16 +48,16 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
   @Override
   public void channelRead0(final ChannelHandlerContext ctx, final FullHttpRequest req) {
     if (!req.decoderResult().isSuccess()) {
-      log.warn("failed to decode request with result: {}", req.decoderResult());
+      LOGGER.warn("failed to decode request with result: {}", req.decoderResult());
       ctx.close();
       return;
     }
 
     // when running with different threads we get the weird refcnt issues
     var resp = handleRequest(req);
-    log.info("responding");
+    LOGGER.info("responding");
     var keepAlive = HttpUtil.isKeepAlive(req);
-    log.info("keepAlive {}", keepAlive);
+    LOGGER.info("keepAlive {}", keepAlive);
 
     var response = new DefaultHttpResponse(HTTP_1_1, resp.status());
     response.headers().set(TRANSFER_ENCODING, CHUNKED);
@@ -75,7 +75,7 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
 
     var f = ctx.writeAndFlush(new HttpChunkedInput(new ChunkedStream(resp.body())));
     if (!keepAlive) {
-      log.info("close connection after write");
+      LOGGER.info("close connection after write");
       f.addListener(ChannelFutureListener.CLOSE);
     }
 

@@ -3,6 +3,7 @@ package com.github.benslabbert.mylinks.handler;
 import static com.github.benslabbert.mylinks.handler.CustomHeaders.REQ_ID;
 import static com.github.benslabbert.mylinks.handler.CustomHeaders.TOKEN;
 import static com.github.benslabbert.mylinks.handler.CustomHeaders.USER_ID;
+import static com.github.benslabbert.mylinks.util.Encoder.encodeUUID;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.github.benslabbert.mylinks.service.StorageService;
@@ -16,7 +17,7 @@ public class UriHandler implements RequestHandler {
 
   public static final String PATH = "/uris";
 
-  private static final Logger log = LoggerFactory.getLogger(UriHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(UriHandler.class);
 
   private final StorageService storageService;
 
@@ -26,9 +27,9 @@ public class UriHandler implements RequestHandler {
 
   @Override
   public Response handle(FullHttpRequest request) {
-    log.info("handle request");
-    var userId = request.headers().get(USER_ID.val());
-    var token = request.headers().get(TOKEN.val());
+    LOGGER.info("handle request");
+    var userId = encodeUUID(request.headers().get(USER_ID.val()));
+    var token = encodeUUID(request.headers().get(TOKEN.val()));
 
     // this is an authenticated request
     var storedToken = storageService.getToken(userId);
@@ -49,7 +50,7 @@ public class UriHandler implements RequestHandler {
 
   private Response get(FullHttpRequest request) {
     var reqId = request.headers().get(REQ_ID.val());
-    log.info("{} handle get", reqId);
+    LOGGER.info("{} handle get", reqId);
 
     var data = RandomStringUtils.randomAlphabetic(1024).getBytes(UTF_8);
     return Response.ok(new ByteArrayInputStream(data));
@@ -57,13 +58,13 @@ public class UriHandler implements RequestHandler {
 
   private Response post(FullHttpRequest request) {
     var reqId = request.headers().get(REQ_ID.val());
-    log.info("{} handle post", reqId);
+    LOGGER.info("{} handle post", reqId);
 
     var content = request.content();
     var bodyStr = content.toString(UTF_8);
     content.release();
 
-    log.info("body {}", bodyStr);
+    LOGGER.info("body {}", bodyStr);
     return Response.noContent();
   }
 }

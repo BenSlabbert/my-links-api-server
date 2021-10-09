@@ -14,7 +14,7 @@ public class CreateAccountHandler implements RequestHandler {
 
   public static final String PATH = "/create_account";
 
-  private static final Logger log = LoggerFactory.getLogger(CreateAccountHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(CreateAccountHandler.class);
 
   private final StorageService storageService;
 
@@ -24,7 +24,7 @@ public class CreateAccountHandler implements RequestHandler {
 
   @Override
   public Response handle(FullHttpRequest request) {
-    log.info("handle request");
+    LOGGER.info("handle request");
 
     if (!request.method().name().equals("POST")) {
       return Response.methodNotAllowed();
@@ -32,12 +32,12 @@ public class CreateAccountHandler implements RequestHandler {
 
     ByteBuf byteBuf = request.content().copy();
     int readableBytes = byteBuf.readableBytes();
-    log.info("readableBytes {}", readableBytes);
+    LOGGER.info("readableBytes {}", readableBytes);
 
     var bytes = new byte[readableBytes];
     byteBuf.readBytes(bytes);
     boolean refContEqualsZero = byteBuf.release();
-    log.info("refContEqualsZero {}", refContEqualsZero);
+    LOGGER.info("refContEqualsZero {}", refContEqualsZero);
 
     var body = new String(bytes, StandardCharsets.UTF_8);
 
@@ -45,7 +45,7 @@ public class CreateAccountHandler implements RequestHandler {
       return Response.badRequest();
     }
 
-    log.info("body: {}", body);
+    LOGGER.info("body: {}", body);
 
     var arr = body.split("&");
     if (arr.length != 2) {
@@ -55,15 +55,13 @@ public class CreateAccountHandler implements RequestHandler {
     var username = arr[0].split("=")[1];
     var password = arr[1].split("=")[1];
 
-    var s = storageService.getUser(username);
-
-    if (s.isPresent()) {
+    if (storageService.getUser(username).isPresent()) {
       return Response.conflict();
     }
 
-    storageService.setUser(username, password);
+    var user = storageService.createUser(username, password);
     var token = UUID.randomUUID();
-    storageService.setToken(username, token);
+    storageService.setToken(user.id(), token);
 
     return Response.created(
         new ByteArrayInputStream(token.toString().getBytes(StandardCharsets.UTF_8)));

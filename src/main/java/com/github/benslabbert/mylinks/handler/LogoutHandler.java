@@ -1,5 +1,7 @@
 package com.github.benslabbert.mylinks.handler;
 
+import static com.github.benslabbert.mylinks.util.Encoder.encodeUUID;
+
 import com.github.benslabbert.mylinks.service.StorageService;
 import io.netty.handler.codec.http.FullHttpRequest;
 import org.slf4j.Logger;
@@ -9,7 +11,7 @@ public class LogoutHandler implements RequestHandler {
 
   public static final String PATH = "/logout";
 
-  private static final Logger log = LoggerFactory.getLogger(LogoutHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LogoutHandler.class);
 
   private final StorageService storageService;
 
@@ -19,10 +21,10 @@ public class LogoutHandler implements RequestHandler {
 
   @Override
   public Response handle(FullHttpRequest request) {
-    log.info("handle request");
+    LOGGER.info("handle request");
 
-    String userId = request.headers().get(CustomHeaders.USER_ID.val());
-    String token = request.headers().get(CustomHeaders.TOKEN.val());
+    var userId = encodeUUID(request.headers().get(CustomHeaders.USER_ID.val()));
+    var token = encodeUUID(request.headers().get(CustomHeaders.TOKEN.val()));
 
     var s = storageService.getToken(userId);
     if (s.isEmpty()) {

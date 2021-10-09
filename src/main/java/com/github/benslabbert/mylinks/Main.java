@@ -3,6 +3,7 @@ package com.github.benslabbert.mylinks;
 import com.github.benslabbert.mylinks.handler.HttpBusinessHandler;
 import com.github.benslabbert.mylinks.service.StorageService;
 import com.github.benslabbert.mylinks.thread.MyThreadFactory;
+import com.google.gson.Gson;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -25,7 +26,8 @@ import redis.clients.jedis.exceptions.JedisConnectionException;
 
 public class Main {
 
-  private static final Logger log = LoggerFactory.getLogger(Main.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+  private static final Gson GSON = new Gson();
 
   public static void main(String[] args) throws InterruptedException {
     var poolConfig = new JedisPoolConfig();
@@ -40,9 +42,9 @@ public class Main {
 
       try (var jedis = jedisPool.getResource()) {
         String pong = jedis.ping();
-        log.info("ping: {}", pong);
+        LOGGER.info("ping: {}", pong);
       } catch (JedisConnectionException e) {
-        log.error("unable to connect to redis", e);
+        LOGGER.error("unable to connect to redis", e);
         return;
       }
 
@@ -63,7 +65,7 @@ public class Main {
                   p.addLast(
                       workerGroup,
                       "businessLogic",
-                      new HttpBusinessHandler(new StorageService(jedisPool)));
+                      new HttpBusinessHandler(new StorageService(jedisPool), GSON));
                 }
               });
 
@@ -75,13 +77,13 @@ public class Main {
       // shut down your server.
       f.channel().closeFuture().sync();
     } finally {
-      log.info("stopping thread pools");
+      LOGGER.info("stopping thread pools");
 
       workerGroup.shutdownGracefully();
       childGroup.shutdownGracefully();
       bossGroup.shutdownGracefully();
     }
 
-    log.info("exit");
+    LOGGER.info("exit");
   }
 }
