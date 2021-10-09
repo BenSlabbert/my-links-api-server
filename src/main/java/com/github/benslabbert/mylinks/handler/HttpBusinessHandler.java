@@ -55,12 +55,14 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
 
     // when running with different threads we get the weird refcnt issues
     var resp = handleRequest(req);
-    LOGGER.info("responding");
     var keepAlive = HttpUtil.isKeepAlive(req);
-    LOGGER.info("keepAlive {}", keepAlive);
 
     var response = new DefaultHttpResponse(HTTP_1_1, resp.status());
     response.headers().set(TRANSFER_ENCODING, CHUNKED);
+
+    for (var entry : resp.headers().entrySet()) {
+      response.headers().add(entry.getKey(), entry.getValue());
+    }
 
     if (keepAlive) {
       if (!req.protocolVersion().isKeepAliveDefault()) {
@@ -78,62 +80,11 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
       LOGGER.info("close connection after write");
       f.addListener(ChannelFutureListener.CLOSE);
     }
-
-    //        .exceptionallyAsync(
-    //            throwable -> {
-    //              if (throwable instanceof CompletionException ce) {
-    //                if (ce.getCause() instanceof UnauthorizedException e) {
-    //                  log.error("unauthorized exception", e);
-    //                  return new Response(UNAUTHORIZED, nullInputStream());
-    //                }
-    //
-    //                if (ce.getCause() instanceof ConflictException e) {
-    //                  log.error("conflict exception", e);
-    //                  return new Response(CONFLICT, nullInputStream());
-    //                }
-    //
-    //                if (ce.getCause() instanceof BadRequestException e) {
-    //                  log.error("bad request exception", e);
-    //                  return new Response(BAD_REQUEST, nullInputStream());
-    //                }
-    //              }
-    //
-    //              log.error("exception handling request", throwable);
-    //              return new Response(INTERNAL_SERVER_ERROR, nullInputStream());
-    //            },
-    //            executorGroup)
-    //        .thenAcceptAsync(
-    //            resp -> {
-    //              log.info("responding");
-    //              var keepAlive = HttpUtil.isKeepAlive(req);
-    //              log.info("keepAlive {}", keepAlive);
-    //
-    //              var response = new DefaultHttpResponse(HTTP_1_1, resp.status());
-    //              response.headers().set(TRANSFER_ENCODING, CHUNKED);
-    //
-    //              if (keepAlive) {
-    //                if (!req.protocolVersion().isKeepAliveDefault()) {
-    //                  response.headers().set(CONNECTION, KEEP_ALIVE);
-    //                }
-    //              } else {
-    //                // Tell the client we're going to close the connection.
-    //                response.headers().set(CONNECTION, CLOSE);
-    //              }
-    //
-    //              ctx.write(response);
-    //
-    //              var f = ctx.writeAndFlush(new HttpChunkedInput(new ChunkedStream(resp.body())));
-    //              if (!keepAlive) {
-    //                log.info("close connection after write");
-    //                f.addListener(ChannelFutureListener.CLOSE);
-    //              }
-    //            },
-    //            executorGroup);
   }
 
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-    cause.printStackTrace();
+    LOGGER.error("some unexpected error", cause);
     ctx.close();
   }
 

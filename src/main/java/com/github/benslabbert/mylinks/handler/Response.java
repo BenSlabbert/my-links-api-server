@@ -1,14 +1,29 @@
 package com.github.benslabbert.mylinks.handler;
 
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.util.AsciiString;
 import java.io.InputStream;
+import java.util.Map;
 
-public record Response(HttpResponseStatus status, InputStream body) {
+public record Response(
+    HttpResponseStatus status, Map<AsciiString, AsciiString> headers, InputStream body) {
 
-  private static final InputStream EMPTY_BODY = InputStream.nullInputStream();
+  public Response(HttpResponseStatus status, InputStream body) {
+    this(status, Map.of(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.TEXT_PLAIN), body);
+  }
+
+  public Response(HttpResponseStatus status) {
+    this(status, InputStream.nullInputStream());
+  }
 
   public static Response ok(InputStream body) {
     return new Response(HttpResponseStatus.OK, body);
+  }
+
+  public static Response ok(Map<AsciiString, AsciiString> headers, InputStream body) {
+    return new Response(HttpResponseStatus.OK, headers, body);
   }
 
   public static Response created(InputStream body) {
@@ -16,7 +31,7 @@ public record Response(HttpResponseStatus status, InputStream body) {
   }
 
   public static Response badRequest() {
-    return new Response(HttpResponseStatus.BAD_REQUEST, EMPTY_BODY);
+    return new Response(HttpResponseStatus.BAD_REQUEST);
   }
 
   public static Response badRequest(InputStream body) {
@@ -24,26 +39,26 @@ public record Response(HttpResponseStatus status, InputStream body) {
   }
 
   public static Response conflict() {
-    return new Response(HttpResponseStatus.CONFLICT, EMPTY_BODY);
+    return new Response(HttpResponseStatus.CONFLICT);
   }
 
   public static Response unauthorized() {
-    return new Response(HttpResponseStatus.UNAUTHORIZED, EMPTY_BODY);
+    return new Response(HttpResponseStatus.UNAUTHORIZED);
   }
 
   public static Response methodNotAllowed() {
-    return new Response(HttpResponseStatus.METHOD_NOT_ALLOWED, EMPTY_BODY);
+    return new Response(HttpResponseStatus.METHOD_NOT_ALLOWED);
   }
 
   public static Response noContent() {
-    return new Response(HttpResponseStatus.NO_CONTENT, EMPTY_BODY);
+    return new Response(HttpResponseStatus.NO_CONTENT);
   }
 
   public static Response internalServerError() {
-    return new Response(HttpResponseStatus.INTERNAL_SERVER_ERROR, EMPTY_BODY);
+    return new Response(HttpResponseStatus.INTERNAL_SERVER_ERROR);
   }
 
   public static Response notFound() {
-    return new Response(HttpResponseStatus.NOT_FOUND, EMPTY_BODY);
+    return new Response(HttpResponseStatus.NOT_FOUND);
   }
 }

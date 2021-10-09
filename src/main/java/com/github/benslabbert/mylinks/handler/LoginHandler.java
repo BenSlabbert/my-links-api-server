@@ -5,7 +5,10 @@ import com.github.benslabbert.mylinks.service.StorageService;
 import com.github.benslabbert.mylinks.util.BasicAuthUtil;
 import com.google.gson.Gson;
 import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -45,6 +48,9 @@ public class LoginHandler implements RequestHandler {
     storageService.setToken(user.get().id(), token);
 
     var json = gson.toJson(new LoginResponseDTO(user.get().id(), token), LoginResponseDTO.TYPE);
-    return Response.ok(IOUtils.toInputStream(json, StandardCharsets.UTF_8));
+
+    return Response.ok(
+        Map.of(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON),
+        IOUtils.toInputStream(json, StandardCharsets.UTF_8));
   }
 }
