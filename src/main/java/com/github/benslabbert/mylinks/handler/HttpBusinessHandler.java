@@ -18,9 +18,10 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpChunkedInput;
 import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.stream.ChunkedStream;
-import java.io.ByteArrayInputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +43,7 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
 
   @Override
   public void channelReadComplete(ChannelHandlerContext ctx) {
+    LOGGER.info("read complete");
     ctx.flush();
   }
 
@@ -54,6 +56,8 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
     }
 
     // when running with different threads we get the weird refcnt issues
+    // so for now we run in our own pooled thread so we can block
+    // todo add exception handling, otherwise we go straight to: exceptionCaught and disconnect
     var resp = handleRequest(req);
     var keepAlive = HttpUtil.isKeepAlive(req);
 
@@ -75,7 +79,7 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
 
     ctx.write(response);
 
-    var f = ctx.writeAndFlush(new HttpChunkedInput(new ChunkedStream(resp.body())));
+    var f = ctx.write(new HttpChunkedInput(new ChunkedStream(resp.body())));
     if (!keepAlive) {
       LOGGER.info("close connection after write");
       f.addListener(ChannelFutureListener.CLOSE);
@@ -103,8 +107,7 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
     for (var customHeader : CustomHeaders.values()) {
       if (customHeader.required() && StringUtils.isEmpty(req.headers().get(customHeader.val()))) {
         var str = "Required header: " + customHeader.val() + " not provided";
-        var body = new ByteArrayInputStream(str.getBytes(UTF_8));
-        return Response.badRequest(body);
+        return Response.badRequest(IOUtils.toInputStream(str, StandardCharsets.UTF_8));
       }
     }
 

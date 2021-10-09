@@ -3,9 +3,9 @@ package com.github.benslabbert.mylinks.handler;
 import com.github.benslabbert.mylinks.service.StorageService;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.FullHttpRequest;
-import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +63,6 @@ public class CreateAccountHandler implements RequestHandler {
     var token = UUID.randomUUID();
     storageService.setToken(user.id(), token);
 
-    return Response.created(
-        new ByteArrayInputStream(token.toString().getBytes(StandardCharsets.UTF_8)));
+    return Response.created(IOUtils.toInputStream(token.toString(), StandardCharsets.UTF_8));
   }
 }

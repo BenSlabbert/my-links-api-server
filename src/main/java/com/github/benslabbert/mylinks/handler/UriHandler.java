@@ -9,6 +9,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import com.github.benslabbert.mylinks.service.StorageService;
 import io.netty.handler.codec.http.FullHttpRequest;
 import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,8 +54,7 @@ public class UriHandler implements RequestHandler {
     var reqId = request.headers().get(REQ_ID.val());
     LOGGER.info("{} handle get", reqId);
 
-    var data = RandomStringUtils.randomAlphabetic(1024).getBytes(UTF_8);
-    return Response.ok(new ByteArrayInputStream(data));
+    return Response.ok(IOUtils.toInputStream(RandomStringUtils.randomAlphabetic(1024), UTF_8));
   }
 
   private Response post(FullHttpRequest request) {
