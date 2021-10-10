@@ -17,11 +17,11 @@ script:
   - export ZULU_JDK="zulu17.28.13-ca-jdk17.0.0-linux_x64"
   - export APACHE_MAVEN_MAJOR="3"
   - export APACHE_MAVEN_MINOR="8"
-  - export APACHE_MAVEN_PATCH="2"
+  - export APACHE_MAVEN_PATCH="3"
   - export APACHE_MAVEN_VERSION="$APACHE_MAVEN_MAJOR.$APACHE_MAVEN_MINOR.$APACHE_MAVEN_PATCH"
   - export APACHE_MAVEN="apache-maven-$APACHE_MAVEN_VERSION"
   - export APACHE_MAVEN_BIN="$APACHE_MAVEN-bin"
-  - WORK_DIR=$(pwd)
+  - export WORK_DIR=$(pwd)
   - cd /tmp
   - curl https://cdn.azul.com/zulu/bin/$ZULU_JDK.tar.gz -o $ZULU_JDK.tar.gz
   - gunzip $ZULU_JDK.tar.gz
