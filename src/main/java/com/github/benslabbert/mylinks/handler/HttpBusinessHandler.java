@@ -57,8 +57,14 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
 
     // when running with different threads we get the weird refcnt issues
     // so for now we run in our own pooled thread so we can block
-    // todo add exception handling, otherwise we go straight to: exceptionCaught and disconnect
-    var resp = handleRequest(req);
+    Response resp;
+    try {
+      resp = handleRequest(req);
+    } catch (Exception e) {
+      LOGGER.error("exception while handling request", e);
+      resp = Response.withException(e);
+    }
+
     var keepAlive = HttpUtil.isKeepAlive(req);
 
     var response = new DefaultHttpResponse(HTTP_1_1, resp.status());
@@ -104,6 +110,7 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
       return handlers.get(path).handle(req);
     }
 
+    // todo use https://www.eclipse.org/aspectj/ and the compiler and create some aspects to auth
     for (var customHeader : CustomHeaders.values()) {
       if (customHeader.required() && StringUtils.isEmpty(req.headers().get(customHeader.val()))) {
         var str = "Required header: " + customHeader.val() + " not provided";

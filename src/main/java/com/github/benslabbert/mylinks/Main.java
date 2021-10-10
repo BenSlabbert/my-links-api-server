@@ -1,7 +1,7 @@
 package com.github.benslabbert.mylinks;
 
+import com.github.benslabbert.mylinks.factory.StorageServiceFactory;
 import com.github.benslabbert.mylinks.handler.HttpBusinessHandler;
-import com.github.benslabbert.mylinks.service.StorageService;
 import com.github.benslabbert.mylinks.thread.MyThreadFactory;
 import com.google.gson.Gson;
 import io.netty.bootstrap.ServerBootstrap;
@@ -20,34 +20,26 @@ import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 
 public class Main {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
-  private static final Gson GSON = new Gson();
 
   public static void main(String[] args) throws InterruptedException {
-    var poolConfig = new JedisPoolConfig();
-    poolConfig.setMaxTotal(4);
-    poolConfig.setMaxIdle(4);
-
     var workerGroup = new DefaultEventExecutorGroup(4, new MyThreadFactory("worker"));
     var bossGroup = new EpollEventLoopGroup(1, new MyThreadFactory("boss"));
     var childGroup = new EpollEventLoopGroup(2, new MyThreadFactory("child"));
 
-    try (var jedisPool = new JedisPool(poolConfig, "localhost")) {
+    try (var jedis = StorageServiceFactory.POOL.getResource()) {
+      String pong = jedis.ping();
+      LOGGER.info("ping: {}", pong);
+    } catch (JedisConnectionException e) {
+      LOGGER.error("unable to connect to redis", e);
+      return;
+    }
 
-      try (var jedis = jedisPool.getResource()) {
-        String pong = jedis.ping();
-        LOGGER.info("ping: {}", pong);
-      } catch (JedisConnectionException e) {
-        LOGGER.error("unable to connect to redis", e);
-        return;
-      }
-
+    try {
       ServerBootstrap b = new ServerBootstrap();
       b.group(bossGroup, childGroup)
           .channel(EpollServerSocketChannel.class)
@@ -65,7 +57,7 @@ public class Main {
                   p.addLast(
                       workerGroup,
                       "businessLogic",
-                      new HttpBusinessHandler(new StorageService(jedisPool), GSON));
+                      new HttpBusinessHandler(StorageServiceFactory.INSTANCE, new Gson()));
                 }
               });
 

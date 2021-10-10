@@ -8,8 +8,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.github.benslabbert.mylinks.service.StorageService;
 import io.netty.handler.codec.http.FullHttpRequest;
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.slf4j.Logger;

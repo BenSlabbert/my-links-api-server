@@ -1,9 +1,13 @@
 #!make
 
-.PHONY: install run test verify compile fmt clean
+.PHONY: install run package test verify compile fmt clean
 
 install: fmt
 	@ mvn install
+	@ docker build . -t my-links/api-server
+
+package: fmt
+	@ mvn package
 	@ docker build . -t my-links/api-server
 
 run: install

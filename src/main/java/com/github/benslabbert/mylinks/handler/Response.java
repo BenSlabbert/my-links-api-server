@@ -1,5 +1,8 @@
 package com.github.benslabbert.mylinks.handler;
 
+import com.github.benslabbert.mylinks.exception.BadRequestException;
+import com.github.benslabbert.mylinks.exception.ConflictException;
+import com.github.benslabbert.mylinks.exception.UnauthorizedException;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -60,5 +63,22 @@ public record Response(
 
   public static Response notFound() {
     return new Response(HttpResponseStatus.NOT_FOUND);
+  }
+
+  public static Response withException(Exception exception) {
+
+    if (exception instanceof BadRequestException) {
+      return badRequest();
+    }
+
+    if (exception instanceof ConflictException) {
+      return conflict();
+    }
+
+    if (exception instanceof UnauthorizedException) {
+      return unauthorized();
+    }
+
+    return internalServerError();
   }
 }
