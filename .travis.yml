@@ -23,14 +23,14 @@ script:
   - export APACHE_MAVEN_BIN="$APACHE_MAVEN-bin"
   - export WORK_DIR=$(pwd)
   - cd /tmp
-  - curl https://cdn.azul.com/zulu/bin/$ZULU_JDK.tar.gz -o $ZULU_JDK.tar.gz
+  - if [ ! -f "$ZULU_JDK.tar.gz" ]; then curl https://cdn.azul.com/zulu/bin/$ZULU_JDK.tar.gz -o "$ZULU_JDK.tar.gz"; fi
   - gunzip $ZULU_JDK.tar.gz
   - tar -xvf $ZULU_JDK.tar
   - export PATH="$PATH:/tmp/$ZULU_JDK/bin"
   - export JAVA_HOME="/tmp/$ZULU_JDK"
-  - curl https://dlcdn.apache.org/maven/maven-$APACHE_MAVEN_MAJOR/$APACHE_MAVEN_VERSION/binaries/$APACHE_MAVEN_BIN.tar.gz -o $APACHE_MAVEN_BIN.tar.gz
-  - gunzip $APACHE_MAVEN_BIN.tar.gz
-  - tar -xvf $APACHE_MAVEN_BIN.tar
+  - if [ ! -f "$APACHE_MAVEN_BIN.tar.gz" ]; then curl https://dlcdn.apache.org/maven/maven-"$APACHE_MAVEN_MAJOR"/"$APACHE_MAVEN_VERSION"/binaries/"$APACHE_MAVEN_BIN.tar.gz" -o "$APACHE_MAVEN_BIN.tar.gz"; fi
+  - gunzip "$APACHE_MAVEN_BIN.tar.gz"
+  - tar -xvf "$APACHE_MAVEN_BIN.tar"
   - export PATH="$PATH:/tmp/$APACHE_MAVEN/bin"
   - mvn --version
   - cd "$WORK_DIR"
@@ -39,3 +39,4 @@ script:
 cache:
   directories:
     - $HOME/.m2
+    - /tmp/*.tar.gz
