@@ -6,7 +6,6 @@ import static io.netty.handler.codec.http.HttpHeaderValues.CHUNKED;
 import static io.netty.handler.codec.http.HttpHeaderValues.CLOSE;
 import static io.netty.handler.codec.http.HttpHeaderValues.KEEP_ALIVE;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
-import static java.nio.charset.StandardCharsets.*;
 
 import com.github.benslabbert.mylinks.service.StorageService;
 import com.google.gson.Gson;
@@ -35,7 +34,7 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
   public HttpBusinessHandler(StorageService storageService, Gson gson) {
     this.handlers =
         Map.of(
-            UriHandler.PATH, new UriHandler(storageService),
+            UriHandler.PATH, new UriHandler(storageService, gson),
             CreateAccountHandler.PATH, new CreateAccountHandler(storageService),
             LogoutHandler.PATH, new LogoutHandler(storageService),
             LoginHandler.PATH, new LoginHandler(storageService, gson));
@@ -43,7 +42,6 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
 
   @Override
   public void channelReadComplete(ChannelHandlerContext ctx) {
-    LOGGER.info("read complete");
     ctx.flush();
   }
 

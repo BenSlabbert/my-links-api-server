@@ -1,6 +1,6 @@
 package com.github.benslabbert.mylinks.handler;
 
-import com.github.benslabbert.mylinks.dto.LoginResponseDTO;
+import com.github.benslabbert.mylinks.dto.LoginResponseDto;
 import com.github.benslabbert.mylinks.service.StorageService;
 import com.github.benslabbert.mylinks.util.BasicAuthUtil;
 import com.google.gson.Gson;
@@ -47,7 +47,9 @@ public class LoginHandler implements RequestHandler {
     var token = UUID.randomUUID();
     storageService.setToken(user.get().id(), token);
 
-    var json = gson.toJson(new LoginResponseDTO(user.get().id(), token), LoginResponseDTO.TYPE);
+    var json =
+        gson.toJson(
+            new LoginResponseDto(user.get().id(), token), LoginResponseDto.TYPE_TOKEN.getType());
 
     return Response.ok(
         Map.of(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON),

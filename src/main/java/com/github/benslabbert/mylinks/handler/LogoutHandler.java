@@ -23,11 +23,8 @@ public class LogoutHandler implements RequestHandler {
   @Secured
   @Override
   public Response handle(FullHttpRequest request) {
-    LOGGER.info("handle request");
-
     var userId = encodeUUID(request.headers().get(CustomHeaders.USER_ID.val()));
     storageService.removeToken(userId);
-
     return Response.noContent();
   }
 }

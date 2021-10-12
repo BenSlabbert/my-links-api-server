@@ -33,6 +33,10 @@ public record Response(
     return new Response(HttpResponseStatus.CREATED, body);
   }
 
+  public static Response created(Map<AsciiString, AsciiString> headers, InputStream body) {
+    return new Response(HttpResponseStatus.CREATED, headers, body);
+  }
+
   public static Response badRequest() {
     return new Response(HttpResponseStatus.BAD_REQUEST);
   }

@@ -5,14 +5,17 @@ import static com.github.benslabbert.mylinks.util.Encoder.encodeUUID;
 
 import com.github.benslabbert.mylinks.exception.ConflictException;
 import com.github.benslabbert.mylinks.persistence.UserPo;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import redis.clients.jedis.JedisPool;
 
 public record StorageService(JedisPool jedisPool) {
 
   private static final byte[] USERS_HSET_KEY = encode("users");
   private static final byte[] TOKEN_HSET_KEY = encode("tokens");
+  private static final byte[] USER_URIS_HSET_KEY_PREFIX = encode("uris-");
 
   public Optional<UUID> getToken(UUID userId) {
     try (var jedis = jedisPool.getResource()) {
@@ -72,5 +75,28 @@ public record StorageService(JedisPool jedisPool) {
       var hmap = jedis.hgetAll(userIdBytes.get());
       return Optional.of(UserPo.fromHmap(hmap));
     }
+  }
+
+  public UUID addUri(UUID userId, String uri) {
+    try (var jedis = jedisPool.getResource()) {
+      var entryId = UUID.randomUUID();
+      jedis.hset(getUserUriKey(userId), encodeUUID(entryId), encode(uri));
+      return entryId;
+    }
+  }
+
+  public Map<UUID, String> getUris(UUID userId) {
+    try (var jedis = jedisPool.getResource()) {
+      return jedis.hgetAll(getUserUriKey(userId)).entrySet().stream()
+          .collect(Collectors.toMap(e -> encodeUUID(e.getKey()), e -> encode(e.getValue())));
+    }
+  }
+
+  private byte[] getUserUriKey(UUID userId) {
+    byte[] bytes = encodeUUID(userId);
+    byte[] merge = new byte[USER_URIS_HSET_KEY_PREFIX.length + bytes.length];
+    System.arraycopy(USER_URIS_HSET_KEY_PREFIX, 0, merge, 0, USER_URIS_HSET_KEY_PREFIX.length);
+    System.arraycopy(bytes, 0, merge, USER_URIS_HSET_KEY_PREFIX.length, bytes.length);
+    return merge;
   }
 }

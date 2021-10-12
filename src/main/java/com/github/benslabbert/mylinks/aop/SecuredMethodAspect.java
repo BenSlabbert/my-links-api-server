@@ -12,13 +12,9 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Aspect
 public class SecuredMethodAspect {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(SecuredMethodAspect.class);
 
   private final UnauthorizedException unauthorizedException =
       new UnauthorizedException("unable to authenticate request");
@@ -26,7 +22,6 @@ public class SecuredMethodAspect {
   private final StorageService storageService;
 
   public SecuredMethodAspect() {
-    LOGGER.info("creating instance");
     storageService = StorageServiceFactory.INSTANCE;
   }
 
@@ -67,6 +62,6 @@ public class SecuredMethodAspect {
       throw unauthorizedException;
     }
 
-    return httpMessage.headers().get(CustomHeaders.USER_ID.val());
+    return httpMessage.headers().get(header.val());
   }
 }
