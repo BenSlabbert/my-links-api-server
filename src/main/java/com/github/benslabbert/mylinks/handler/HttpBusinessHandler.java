@@ -110,7 +110,6 @@ public class HttpBusinessHandler extends SimpleChannelInboundHandler<FullHttpReq
       return handlers.get(path).handle(req);
     }
 
-    // todo use https://www.eclipse.org/aspectj/ and the compiler and create some aspects to auth
     for (var customHeader : CustomHeaders.values()) {
       if (customHeader.required() && StringUtils.isEmpty(req.headers().get(customHeader.val()))) {
         var str = "Required header: " + customHeader.val() + " not provided";
